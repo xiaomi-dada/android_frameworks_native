@@ -5690,6 +5690,18 @@ TEST_F(OutputUpdateProtectedContentStateTest, ifProtectedContentLayerComposeByCl
     mOutput.updateProtectedContentState();
 }
 
+TEST_F(OutputUpdateProtectedContentStateTest, notProtectedForProtectedCameraLayer) {
+    mOutput.mState.isProtected = true;
+    mLayer1.mLayerFEState.hasProtectedContent = true;
+    mLayer2.mLayerFEState.hasProtectedContent = true;
+    mLayer2.mLayerFEState.buffer = sp<GraphicBuffer>::make();
+    mLayer2.mLayerFEState.buffer->usage = GRALLOC_USAGE_PROTECTED | GRALLOC_USAGE_HW_CAMERA_WRITE;
+    EXPECT_CALL(mRenderEngine, supportsProtectedContent()).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mRenderSurface, isProtected).WillOnce(Return(true));
+    EXPECT_CALL(*mRenderSurface, setProtected(false));
+    mOutput.updateProtectedContentState();
+}
+
 struct OutputPresentFrameAndReleaseLayersTest : public testing::Test {
     struct OutputPartialMock : public OutputPartialMockBase {
         // Sets up the helper functions called by the function under test (and functions we can

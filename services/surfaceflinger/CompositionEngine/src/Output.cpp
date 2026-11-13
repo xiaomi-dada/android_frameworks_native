@@ -1370,11 +1370,23 @@ void Output::updateProtectedContentState() {
     // 1. The display is protected (in legacy, check if the display is secure)
     // 2. Protected content is supported
     // 3. At least one layer has protected content.
+    // 4. No layer is a protected camera buffer. Those are only ever scanned out by the display,
+    //    whose secure camera mode cannot be combined with a protected client target, and the
+    //    GPU can't sample them anyway.
     if (outputState.isProtected && supportsProtectedContent) {
         auto layers = getOutputLayersOrderedByZ();
-        bool needsProtected = std::any_of(layers.begin(), layers.end(), [](auto* layer) {
-            return layer->getLayerFE().getCompositionState()->hasProtectedContent;
-        });
+        bool needsProtected = false;
+        for (auto* layer : layers) {
+            const auto* state = layer->getLayerFE().getCompositionState();
+            if (!state->hasProtectedContent) {
+                continue;
+            }
+            if (state->buffer && (state->buffer->getUsage() & GRALLOC_USAGE_HW_CAMERA_WRITE)) {
+                needsProtected = false;
+                break;
+            }
+            needsProtected = true;
+        }
         if (needsProtected != mRenderSurface->isProtected()) {
             mRenderSurface->setProtected(needsProtected);
         }
